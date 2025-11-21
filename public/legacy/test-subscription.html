@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Newsletter Form</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        form { max-width: 400px; margin: 20px auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; }
+        button { width: 100%; padding: 10px; background: #1a535c; color: white; border: none; cursor: pointer; }
+        #message { padding: 10px; margin: 10px 0; min-height: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f0f0f0; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Newsletter Subscription</h1>
+    
+    <form id="testForm">
+        <input type="email" id="email" placeholder="Enter your email" required>
+        <button type="submit">Subscribe</button>
+    </form>
+    
+    <div id="message"></div>
+    
+    <h3>Response:</h3>
+    <pre id="response">Waiting for response...</pre>
+    
+    <script>
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const messageDiv = document.getElementById('message');
+            const responseDiv = document.getElementById('response');
+            
+            messageDiv.innerHTML = 'Sending...';
+            messageDiv.className = '';
+            
+            console.log('Sending request to:', window.location.origin + '/backend/subscribe-mysql.php');
+            console.log('Email:', email);
+            
+            fetch(window.location.origin + '/backend/subscribe-mysql.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: email })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                responseDiv.textContent = JSON.stringify(data, null, 2);
+                
+                if (data.success) {
+                    messageDiv.innerHTML = '✅ Success! ' + data.message;
+                    messageDiv.className = 'success';
+                } else {
+                    messageDiv.innerHTML = '⚠️ Error: ' + (data.message || 'Unknown error');
+                    messageDiv.className = 'error';
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                messageDiv.innerHTML = '❌ Connection Error: ' + error.message;
+                messageDiv.className = 'error';
+                responseDiv.textContent = error.toString();
+            });
+        });
+    </script>
+</body>
+</html>

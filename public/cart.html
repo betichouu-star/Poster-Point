@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart - Poster Point</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+            .zoom-modal {
+              position: fixed;
+              top: 0; left: 0; right: 0; bottom: 0;
+              background: rgba(30,40,60,0.7);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 9999;
+            }
+            .zoom-modal img {
+              max-width: 90vw;
+              max-height: 90vh;
+              border-radius: 18px;
+              box-shadow: 0 8px 40px #2228;
+              background: #fff;
+              display: block;
+            }
+            .zoom-modal-close {
+              position: absolute;
+              top: 32px;
+              right: 48px;
+              font-size: 2.2em;
+              color: #fff;
+              background: none;
+              border: none;
+              cursor: pointer;
+              z-index: 10001;
+            }
+        .cart-item img {
+          width: 100%;
+          height: 100%;
+          max-width: 120px;
+          max-height: 120px;
+          object-fit: cover;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px #e0e7ff;
+          background: #f7fff7;
+        }
+    body {
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(120deg, #f7fff7 0%, #e0e7ff 100%);
+      color: #1A535C;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .cart-page {
+      max-width: 480px;
+      margin: 48px auto 0 auto;
+      background: rgba(255,255,255,0.85);
+      border-radius: 22px;
+      box-shadow: 0 8px 40px 0 rgba(30,40,60,0.18), 0 1.5px 8px 0 rgba(80,120,180,0.07);
+      padding: 32px 24px 28px 24px;
+      backdrop-filter: blur(8px);
+      position: relative;
+    }
+    .cart-header {
+      font-size: 2.2rem;
+
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+      color: #2b2d42;
+      border-top: 2px solid #e3e8ee;
+      padding-top: 12px;
+    }
+    .checkout-btn {
+      margin-top: 22px;
+      width: 100%;
+        /* .offers removed */
+    
+      background: linear-gradient(90deg,#25D366,#43e97b 80%,#1A535C 100%);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.13em;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 2px 12px #e0e7ff;
+      letter-spacing: 0.5px;
+      transition: background 0.18s, box-shadow 0.18s;
+    }
+    .empty {
+      color: #b2b2b2;
+      text-align: center;
+      margin: 48px 0 36px 0;
+      font-size: 1.15em;
+      font-weight: 600;
+    }
+    .qty-btn {
+      padding: 4px 12px;
+      border-radius: 7px;
+      border: 1.5px solid #b2b2b2;
+      background: #f7fff7;
+      font-size: 1.13em;
+      cursor: pointer;
+      margin: 0 2px;
+      font-weight: 700;
+      color: #2b2d42;
+      transition: background 0.15s, border 0.15s;
+    }
+    .remove-btn {
+      background: #fff0f0;
+      color: #c00;
+      border: 1.5px solid #fbb;
+      border-radius: 7px;
+      padding: 4px 12px;
+      margin-left: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1em;
+      transition: background 0.15s, border 0.15s;
+    }
+    /* .offers removed */
+
+    <div id="cart-items"></div>
+    <div class="cart-footer" id="cart-footer" style="display:none;">
+      <span>Total</span>
+      <span id="cart-total">₹0</span>
+    </div>
+    <button class="checkout-btn" id="checkout-btn" style="display:none;">Checkout via WhatsApp</button>
+    <div class="empty" id="cart-empty" style="display:none;">Your cart is empty — add some posters!</div>
+  </div>
+    </style>
+  </head>
+  <body>
+    <div class="cart-page">
+        <div id="zoom-modal" style="display:none;"></div>
+      <div class="cart-header">Your Cart</div>
+      <div id="cart-items"></div>
+      <div class="cart-footer" id="cart-footer" style="display:none;">
+        <span>Total</span>
+        <span id="cart-total">₹0</span>
+      </div>
+      <button class="checkout-btn" id="checkout-btn" style="display:none;">Checkout via WhatsApp</button>
+      <div class="empty" id="cart-empty" style="display:none;">Your cart is empty — add some posters!</div>
+    </div>
+  <script>
+    // Cart logic with quantity, remove, and offers
+    // Offer logic: returns a map of id -> free count
+    function computeOfferFreeItems(cart) {
+      const counts = {};
+      for(const it of cart){ counts[it.id] = (counts[it.id]||0) + (it.qty||1); }
+      const freeMap = {};
+      for(const id of Object.keys(counts)){
+        const cnt = counts[id];
+        let free = 0;
+        if(cnt >= 10) free = Math.floor(cnt/10)*5;
+        else if(cnt >= 5) free = Math.floor(cnt/5)*2;
+        else if(cnt >= 3) free = Math.floor(cnt/3)*1;
+        if(free > 0) freeMap[id] = free;
+      }
+      return freeMap;
+    }
+    function renderCart() {
+      let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const itemsDiv = document.getElementById('cart-items');
+      const footer = document.getElementById('cart-footer');
+      const totalSpan = document.getElementById('cart-total');
+      const checkoutBtn = document.getElementById('checkout-btn');
+      const emptyDiv = document.getElementById('cart-empty');
+      itemsDiv.innerHTML = '';
+      if (!cart.length) {
+        footer.style.display = 'none';
+        checkoutBtn.style.display = 'none';
+        emptyDiv.style.display = '';
+        return;
+      }
+      emptyDiv.style.display = 'none';
+      // Calculate offer-adjusted total
+      const freeMap = computeOfferFreeItems(cart);
+      let total = 0;
+      cart.forEach((it, idx) => {
+        let qty = it.qty || 1;
+        let free = freeMap[it.id] || 0;
+        let paidQty = Math.max(0, qty - free);
+        total += (it.price || 0) * paidQty;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cart-item';
+        itemDiv.innerHTML = `
+          <img src="${it.image || 'https://via.placeholder.com/80x80?text=' + it.id}" alt="thumb" class="cart-img" style="cursor:zoom-in;">
+          <div class="cart-item-details">
+            <div class="cart-item-title">${it.name}</div>
+            <div class="cart-item-meta">Size: ${it.size || 'A4'} • ₹${it.price} × <button class="qty-btn" data-idx="${idx}" data-delta="-1">−</button><span id="qty-${idx}" style="min-width:2em;display:inline-block;text-align:center;">${it.qty}</span><button class="qty-btn" data-idx="${idx}" data-delta="1">+</button> <button class="remove-btn" data-idx="${idx}">Remove</button></div>
+          </div>
+        `;
+              // Image zoom handlers
+              itemsDiv.querySelectorAll('.cart-img').forEach(img => {
+                img.onclick = function() {
+                  const modal = document.getElementById('zoom-modal');
+                  modal.innerHTML = `<button class='zoom-modal-close'>&times;</button><img src='${img.src}' alt='zoomed'>`;
+                  modal.style.display = '';
+                  modal.querySelector('.zoom-modal-close').onclick = function() {
+                    modal.style.display = 'none';
+                    modal.innerHTML = '';
+                  };
+                  modal.onclick = function(e) {
+                    if(e.target === modal) { modal.style.display = 'none'; modal.innerHTML = ''; }
+                  };
+                };
+              });
+        itemsDiv.appendChild(itemDiv);
+      });
+      // Quantity and remove handlers
+      itemsDiv.querySelectorAll('.qty-btn').forEach(btn => {
+        btn.onclick = function() {
+          const idx = +this.getAttribute('data-idx');
+          const delta = +this.getAttribute('data-delta');
+          cart[idx].qty = Math.max(1, (cart[idx].qty||1) + delta);
+          localStorage.setItem('cart', JSON.stringify(cart));
+          renderCart();
+        };
+      });
+      itemsDiv.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.onclick = function() {
+          const idx = +this.getAttribute('data-idx');
+          cart.splice(idx,1);
+          localStorage.setItem('cart', JSON.stringify(cart));
+          renderCart();
+        };
+      });
+      totalSpan.textContent = '₹' + total;
+      footer.style.display = '';
+      checkoutBtn.style.display = '';
+    }
+      document.getElementById('checkout-btn').onclick = function() {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const freeMap = computeOfferFreeItems(cart);
+        let total = 0;
+        const text = cart.map(i => {
+          let qty = i.qty || 1;
+          let free = freeMap[i.id] || 0;
+          let paidQty = Math.max(0, qty - free);
+          total += (i.price || 0) * paidQty;
+          return `${i.name} (${i.size||'A4'}) x${qty} - ₹${(i.price||0)*paidQty}`;
+        }).join('%0A');
+        const url = `https://wa.me/?text=${encodeURIComponent('Hi, I want to buy:\n'+text+'\nTotal: ₹'+total)}`;
+        window.open(url,'_blank');
+      };
+    renderCart();
+  </script>
+</body>
+</html>
